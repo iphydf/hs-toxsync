@@ -19,6 +19,8 @@ module Tox.Sync.Fact
   , value
   , getSubject
   , getValue
+  , enum
+  , getEnum
     -- * Sets of facts
   , Facts
   , noFacts
@@ -61,7 +63,7 @@ data Privacy = Public | Private
 data VoiceState = VoiceEveryone | VoiceModerators | VoiceFounder
   deriving (Eq, Show, Enum, Bounded)
 
--- | As the home has it.
+-- | A call's state, as the home has it.
 data CallState
   = NoCall
   | Ringing Bool
@@ -171,8 +173,6 @@ subject = \case
 value :: Value -> B.Builder
 value v = MP.array [MP.uint (valueKind v), payload]
   where
-    enum :: Enum e => e -> B.Builder
-    enum = MP.uint . fromIntegral . fromEnum
     payload = case v of
       Name t                    -> MP.str t
       StatusMessage t           -> MP.str t
@@ -209,10 +209,17 @@ getSubject = MP.variant known unknown
     unknown 0 = pure AccountSubject
     unknown _ = fail "Unknown subject"
 
+toxValue :: (Enum e, Bounded e) => MP.Fields (Maybe e)
+toxValue = MP.field getEnum
+
+-- | One of Tox's enums.
+enum :: Enum e => e -> B.Builder
+enum = MP.uint . fromIntegral . fromEnum
+
 -- | Nothing for values we don't know (like one a newer version gave a
 -- payload).
-toxValue :: forall e. (Enum e, Bounded e) => MP.Fields (Maybe e)
-toxValue = MP.field (MP.variant (const (Just Nothing <$ MP.end)) (pure . known))
+getEnum :: forall e. (Enum e, Bounded e) => MP.Get (Maybe e)
+getEnum = MP.variant (const (Just Nothing <$ MP.end)) (pure . known)
   where
     known n
       | n <= fromIntegral (fromEnum (maxBound :: e)) = Just (toEnum (fromIntegral n))

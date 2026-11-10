@@ -28,7 +28,7 @@ flagFirst = 2
 maxPayload :: Int
 maxPayload = 1373 - 2
 
--- | A first frame starts it, a final one ends it.
+-- | The first frame is flagged first, and the last final.
 frames :: BS.ByteString -> [BS.ByteString]
 frames message = zipWith frame [0 ..] chunks
   where

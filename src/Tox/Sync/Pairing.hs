@@ -43,6 +43,5 @@ checksummed address = case Base16.decode (Text.encodeUtf8 address) of
     in BS.pack [a, b] == sums
   _ -> False
 
--- | Friend request message of the new device.
 requestMessage :: PairingLink -> Text
 requestMessage link = "pair:" <> linkCode link

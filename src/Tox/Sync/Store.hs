@@ -59,7 +59,7 @@ maxEvent = 64 * 1024
 maxRank :: Word64
 maxRank = 2 ^ (53 :: Int)
 
--- | Unless it's there already.
+-- | Does nothing if it's there already.
 insert :: BS.ByteString -> EventStore -> Either String (EventId, EventStore)
 insert bytes store
   | BS.length bytes > maxEvent = Left "Event too long"
@@ -84,7 +84,7 @@ checkRank event store
       _ | length known == length (eventParents event) -> eventRank event == maximum known + 1
         | otherwise -> eventRank event > maximum known
 
--- | After every head of its graph.
+-- | A new event, after every head of its graph.
 create :: GraphId -> PublicKey -> Int64 -> Content -> EventStore -> (EventId, BS.ByteString, EventStore)
 create graph author time c store = (i, bytes, add i event bytes store)
   where

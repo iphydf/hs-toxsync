@@ -1,5 +1,5 @@
 {-# LANGUAGE StrictData #-}
--- | Copy of an account on a device whose home runs it on Tox.
+-- | A copy of an account on a device whose home runs it on Tox.
 module Tox.Sync.Replica
   ( Replica (..)
   , newReplica
@@ -7,6 +7,7 @@ module Tox.Sync.Replica
   , offline
   , author
   , received
+  , older
   ) where
 
 import qualified Data.ByteString   as BS
@@ -38,14 +39,14 @@ data Replica = Replica
   , replicaLive    :: Facts
   }
 
--- | By our key and the home's.
+-- | Takes our key and the home's.
 newReplica :: PublicKey -> PublicKey -> EventStore -> Replica
 newReplica device home store = Replica device (accountGraph home) store False Set.empty noFacts
 
 offline :: Replica -> Replica
 offline r = r { replicaSession = False, replicaPaged = Set.empty }
 
--- | New event by us, and what to send the home for it. Nothing outside a
+-- | A new event by us, and what to send the home for it. Nothing outside a
 -- session (the next one's summaries catch up).
 author :: GraphId -> Int64 -> Content -> Replica -> (EventId, BS.ByteString, [SessionMessage], Replica)
 author g time c r = (i, bytes, [Events [bytes] | replicaSession r], r { replicaStore = store })
@@ -61,6 +62,13 @@ received message r = case message of
   Facts facts everything ->
     ([], r { replicaLive = updateFacts facts (if everything then noFacts else replicaLive r) })
   _ -> (answer (replicaStore r) message, r)
+
+-- | Asks for the page before the oldest events we have of a conversation.
+-- Its answer comes as 'Events'. Nothing outside a session, or once we have
+-- it all.
+older :: GraphId -> Replica -> [SessionMessage]
+older g r = [History g ids historyPage | replicaSession r, not (null ids)]
+  where ids = map fst (frontier g (replicaStore r))
 
 addEvents :: [BS.ByteString] -> Replica -> ([SessionMessage], Replica)
 addEvents events r0 = (concat replies, r2)

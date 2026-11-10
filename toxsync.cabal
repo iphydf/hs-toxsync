@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name:          toxsync
-synopsis:      Account sync between a Tox user's devices
+synopsis:      Tox user's devices private and cross-friends sync
 version:       0.0.1
 stability:     experimental
 license:       GPL-3.0-only
@@ -24,6 +24,14 @@ library
   hs-source-dirs:   src
   ghc-options:      -Wall
   exposed-modules:
+    Tox.Share
+    Tox.Share.Congestion
+    Tox.Share.History
+    Tox.Share.Info
+    Tox.Share.Packet
+    Tox.Share.Stats
+    Tox.Share.Swarm
+    Tox.Share.Transfer
     Tox.Sync.Account
     Tox.Sync.Event
     Tox.Sync.Fact
@@ -39,9 +47,12 @@ library
   build-depends:
       base               <5
     , base16-bytestring  >=1 && <1.1
+    , binary             <0.9
     , bytestring         <0.13
     , containers         <0.8
+    , cryptohash-sha1    <0.12
     , cryptohash-sha256  <0.12
+    , random             >=1.2 && <1.4
     , text               <2.2
 
 test-suite testsuite
@@ -52,6 +63,11 @@ test-suite testsuite
   ghc-options:      -Wall
   build-tool-depends: hspec-discover:hspec-discover
   other-modules:
+    Tox.Share.HistorySpec
+    Tox.Share.InfoSpec
+    Tox.Share.PacketSpec
+    Tox.Share.SwarmSpec
+    Tox.Share.TransferSpec
     Tox.Sync.ConformanceSpec
   build-depends:
       aeson
@@ -61,6 +77,8 @@ test-suite testsuite
     , containers
     , directory
     , hspec
+    , QuickCheck
+    , random
     , scientific
     , text
     , toxsync
