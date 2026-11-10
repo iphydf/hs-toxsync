@@ -1,5 +1,5 @@
 {-# LANGUAGE StrictData #-}
--- | Copy of an account on a device whose home runs it on Tox.
+-- | A copy of an account on a device whose home runs it on Tox.
 module Tox.Sync.Replica
   ( Replica (..)
   , newReplica
@@ -38,14 +38,14 @@ data Replica = Replica
   , replicaLive    :: Facts
   }
 
--- | By our key and the home's.
+-- | Takes our key and the home's.
 newReplica :: PublicKey -> PublicKey -> EventStore -> Replica
 newReplica device home store = Replica device (accountGraph home) store False Set.empty noFacts
 
 offline :: Replica -> Replica
 offline r = r { replicaSession = False, replicaPaged = Set.empty }
 
--- | New event by us, and what to send the home for it. Nothing outside a
+-- | A new event by us, and what to send the home for it. Nothing outside a
 -- session (the next one's summaries catch up).
 author :: GraphId -> Int64 -> Content -> Replica -> (EventId, BS.ByteString, [SessionMessage], Replica)
 author g time c r = (i, bytes, [Events [bytes] | replicaSession r], r { replicaStore = store })

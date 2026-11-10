@@ -55,7 +55,7 @@ spec = do
 -- Problems a case found.
 type Check = IORef [String]
 
--- | Bazel's runfiles, or this package.
+-- | In Bazel's runfiles, or in this package.
 conformanceDirs :: [FilePath]
 conformanceDirs = ["hs-toxsync/test/conformance", "test/conformance"]
 
@@ -332,6 +332,13 @@ contentOf j = case variant j of
   ("clear_setting", c) -> ClearSetting (scopeOf (c ! "scope")) (int (c ! "kind"))
   ("received_privately", c) -> ReceivedPrivately (pk (c ! "from")) (text (c ! "sender")) (bytes (c ! "message")) (kindOf (c ! "kind"))
   ("send_privately", c) -> SendPrivately (pk (c ! "to")) (text (c ! "sender")) (bytes (c ! "message")) (kindOf (c ! "kind"))
+  ("peer_joined", c) -> PeerJoined (pk (c ! "peer")) (text (c ! "name"))
+  ("peer_left", c) -> PeerLeft (pk (c ! "peer")) (text (c ! "name"))
+  ("peer_renamed", c) -> PeerRenamed (pk (c ! "peer")) (text (c ! "old")) (text (c ! "name"))
+  ("topic_set", c) -> TopicSet (optional' pk (c ! "by")) (text (c ! "name")) (text (c ! "topic"))
+  ("title_set", c) -> TitleSet (optional' pk (c ! "by")) (text (c ! "name")) (text (c ! "title"))
+  ("moderated", c) -> Moderated (optional' pk (c ! "by")) (text (c ! "name")) (optional' pk (c ! "peer")) (text (c ! "peer_name"))
+                        (optional' (named roles) (c ! "role"))
   ("device", c) -> Device (pk (c ! "pk")) (text (c ! "name"))
   ("device_gone", c) -> DeviceGone (pk (c ! "pk"))
   ("new_chat", c) -> NewChat (chatKindOf (c ! "kind")) (text (c ! "name")) (named privacies (c ! "privacy"))
@@ -382,6 +389,16 @@ contentJson = \case
     obj [("from", pkJson from), ("sender", String sender), ("message", hex message), ("kind", kindJson kind)]
   SendPrivately to sender message kind -> tagged "send_privately" $
     obj [("to", pkJson to), ("sender", String sender), ("message", hex message), ("kind", kindJson kind)]
+  PeerJoined k name -> tagged "peer_joined" (obj [("peer", pkJson k), ("name", String name)])
+  PeerLeft k name -> tagged "peer_left" (obj [("peer", pkJson k), ("name", String name)])
+  PeerRenamed k old name -> tagged "peer_renamed" (obj [("peer", pkJson k), ("old", String old), ("name", String name)])
+  TopicSet by name topic -> tagged "topic_set" $
+    obj [("by", maybe Null pkJson by), ("name", String name), ("topic", String topic)]
+  TitleSet by name title -> tagged "title_set" $
+    obj [("by", maybe Null pkJson by), ("name", String name), ("title", String title)]
+  Moderated by name k peerName role -> tagged "moderated" $ obj
+    [ ("by", maybe Null pkJson by), ("name", String name), ("peer", maybe Null pkJson k), ("peer_name", String peerName)
+    , ("role", maybe Null (nameOf roles) role) ]
   Device k name -> tagged "device" (obj [("pk", pkJson k), ("name", String name)])
   DeviceGone k -> tagged "device_gone" (obj [("pk", pkJson k)])
   NewChat kind name privacy -> tagged "new_chat" $

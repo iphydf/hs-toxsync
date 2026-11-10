@@ -63,6 +63,19 @@ data Content
     -- message.
   | SendPrivately PublicKey Text BS.ByteString MessageKind
     -- ^ "Please send this privately", with our name at the time.
+  | PeerJoined PublicKey Text
+    -- ^ Who joined the chat, and as what name.
+  | PeerLeft PublicKey Text
+    -- ^ Who left, and what they were last called.
+  | PeerRenamed PublicKey Text Text
+    -- ^ Their old name and new one.
+  | TopicSet (Maybe PublicKey) Text Text
+    -- ^ Who set a group's topic, where Tox said, their name, and the topic.
+  | TitleSet (Maybe PublicKey) Text Text
+    -- ^ The chat's name: a conference's title or a group's name.
+  | Moderated (Maybe PublicKey) Text (Maybe PublicKey) Text (Maybe Role)
+    -- ^ Who gave whom (and their name) what role, or kicked them where
+    -- there's none.
   | WantFriend PublicKey (Maybe Text) (Maybe Word32)
     -- ^ With the friend request message and nospam.
   | UnwantFriend PublicKey
@@ -112,6 +125,12 @@ contentTag = \case
   CallEnded {}      -> 9
   ReceivedPrivately {} -> 10
   SendPrivately {}  -> 11
+  PeerJoined {}     -> 12
+  PeerLeft {}       -> 13
+  PeerRenamed {}    -> 14
+  TopicSet {}       -> 15
+  TitleSet {}       -> 16
+  Moderated {}      -> 17
   WantFriend {}     -> 64
   UnwantFriend _    -> 65
   ReadUpTo {}       -> 66
@@ -191,6 +210,13 @@ content c = MP.array [MP.uint (contentTag c), payload]
       ClearSetting s kind -> fields [scope s, MP.uint (fromIntegral kind)]
       ReceivedPrivately from sender message kind -> fields [key from, MP.str sender, MP.bin message, kindOf kind]
       SendPrivately to sender message kind -> fields [key to, MP.str sender, MP.bin message, kindOf kind]
+      PeerJoined peer name -> fields [key peer, MP.str name]
+      PeerLeft peer name -> fields [key peer, MP.str name]
+      PeerRenamed peer old name -> fields [key peer, MP.str old, MP.str name]
+      TopicSet by name topic -> fields [MP.opt (key <$> by), MP.str name, MP.str topic]
+      TitleSet by name title -> fields [MP.opt (key <$> by), MP.str name, MP.str title]
+      Moderated by name peer peerName role ->
+        fields [MP.opt (key <$> by), MP.str name, MP.opt (key <$> peer), MP.str peerName, MP.opt (MP.uint . fromIntegral . fromEnum <$> role)]
       Device pk name -> fields [key pk, MP.str name]
       DeviceGone pk -> key pk
       NewChat kind name privacy ->
@@ -258,6 +284,18 @@ getContent = MP.variant known (pure . UnknownContent)
       76 -> struct $ ClearSetting <$> f getScope <*> f getWord32
       10 -> struct $ ReceivedPrivately <$> f getPublicKey <*> f MP.getStr <*> f MP.getBin <*> f getKind
       11 -> struct $ SendPrivately <$> f getPublicKey <*> f MP.getStr <*> f MP.getBin <*> f getKind
+      12 -> struct $ PeerJoined <$> f getPublicKey <*> f MP.getStr
+      13 -> struct $ PeerLeft <$> f getPublicKey <*> f MP.getStr
+      14 -> struct $ PeerRenamed <$> f getPublicKey <*> f MP.getStr <*> f MP.getStr
+      15 -> struct $ TopicSet <$> MP.optional getPublicKey <*> f MP.getStr <*> f MP.getStr
+      16 -> struct $ TitleSet <$> MP.optional getPublicKey <*> f MP.getStr <*> f MP.getStr
+      -- So does an unknown role.
+      17 -> f $ MP.fields $ do
+        by <- MP.optional getPublicKey
+        name <- f MP.getStr
+        peer <- MP.optional getPublicKey
+        peerName <- f MP.getStr
+        fmap (Moderated by name peer peerName) . sequence <$> MP.optional getEnum
       77 -> struct $ Device <$> f getPublicKey <*> f MP.getStr
       78 -> Just . DeviceGone <$> f getPublicKey
       -- So does an unknown kind or privacy.

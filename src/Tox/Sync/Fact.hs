@@ -19,6 +19,7 @@ module Tox.Sync.Fact
   , value
   , getSubject
   , getValue
+  , getEnum
     -- * Sets of facts
   , Facts
   , noFacts
@@ -61,7 +62,7 @@ data Privacy = Public | Private
 data VoiceState = VoiceEveryone | VoiceModerators | VoiceFounder
   deriving (Eq, Show, Enum, Bounded)
 
--- | As the home has it.
+-- | A call's state, as the home has it.
 data CallState
   = NoCall
   | Ringing Bool
@@ -211,8 +212,12 @@ getSubject = MP.variant known unknown
 
 -- | Nothing for values we don't know (like one a newer version gave a
 -- payload).
-toxValue :: forall e. (Enum e, Bounded e) => MP.Fields (Maybe e)
-toxValue = MP.field (MP.variant (const (Just Nothing <$ MP.end)) (pure . known))
+toxValue :: (Enum e, Bounded e) => MP.Fields (Maybe e)
+toxValue = MP.field getEnum
+
+-- | One of Tox's enums, 'Nothing' for a value from a newer version.
+getEnum :: forall e. (Enum e, Bounded e) => MP.Get (Maybe e)
+getEnum = MP.variant (const (Just Nothing <$ MP.end)) (pure . known)
   where
     known n
       | n <= fromIntegral (fromEnum (maxBound :: e)) = Just (toEnum (fromIntegral n))

@@ -33,14 +33,15 @@ data Friend = Friend
     -- ^ Waiting for an answer.
   } deriving (Eq, Show)
 
--- | Chat shown with another, by the keys of the bot relaying between them.
+-- | A chat shown as part of another ('mergeInto'), with the key of the bot
+-- relaying between them in each.
 data Merge = Merge
   { mergeBot     :: PublicKey
   , mergeInto    :: ChatId
   , mergeIntoBot :: PublicKey
   } deriving (Eq, Show)
 
--- | From its last answer and what the home did with it.
+-- | An invite's state, from its last answer and what the home did with it.
 data InviteStatus
   = Pending
   | Joining
@@ -100,7 +101,7 @@ accountOf g = foldl (\s (i, e) -> applyEvent i (eventContent e) s) emptyAccount 
 joinedChats :: AccountState -> [ChatId]
 joinedChats s = [c | (ChatSubject c, Joined True) <- allFacts (accountFacts s)]
 
--- | After all events of lower rank.
+-- | Applied after all events of lower rank.
 applyEvent :: EventId -> Content -> AccountState -> AccountState
 applyEvent i c s = case c of
   FactContent subject' value' -> s { accountFacts = setFact subject' value' (accountFacts s) }

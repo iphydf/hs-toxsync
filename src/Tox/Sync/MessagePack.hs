@@ -15,6 +15,7 @@ module Tox.Sync.MessagePack
   , str
   , bin
   , array
+  , object
   , opt
   , raw
     -- * Reading
@@ -28,6 +29,7 @@ module Tox.Sync.MessagePack
   , getKey
   , isArray
   , getArrayLength
+  , getMapLength
   , skip
   , getRaw
   , list
@@ -108,6 +110,15 @@ array items = header (length items) <> mconcat items
       | n < 16 = B.word8 (0x90 .|. fromIntegral n)
       | n < 0x10000 = B.word8 0xdc <> B.word16BE (fromIntegral n)
       | otherwise = B.word8 0xdd <> B.word32BE (fromIntegral n)
+
+-- | A map with string keys, which tox-proto doesn't write but HS2 does.
+object :: [(Text, B.Builder)] -> B.Builder
+object entries = header (length entries) <> foldMap (\(k, v) -> str k <> v) entries
+  where
+    header n
+      | n < 16 = B.word8 (0x80 .|. fromIntegral n)
+      | n < 0x10000 = B.word8 0xde <> B.word16BE (fromIntegral n)
+      | otherwise = B.word8 0xdf <> B.word32BE (fromIntegral n)
 
 -- | @[]@ or @[value]@.
 opt :: Maybe B.Builder -> B.Builder
@@ -224,6 +235,14 @@ getArrayLength = byte >>= \b ->
     0xdc -> fromIntegral <$> word 2
     0xdd -> fromIntegral <$> word 4
     _    -> fail "Not an array"
+
+-- | How many key and value pairs follow.
+getMapLength :: Get Int
+getMapLength = byte >>= \b ->
+  if b .&. 0xf0 == 0x80 then pure (fromIntegral (b .&. 0x0f)) else case b of
+    0xde -> fromIntegral <$> word 2
+    0xdf -> fromIntegral <$> word 4
+    _    -> fail "Not a map"
 
 -- | Moves past 1 value, however deeply nested, without building it.
 skip :: Get ()

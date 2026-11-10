@@ -1,0 +1,24 @@
+load("@rules_haskell//haskell:defs.bzl", "haskell_binary")
+
+haskell_binary(
+    name = "tox-share-peer",
+    srcs = ["tox-share-peer.hs"],
+    ghcopts = ["-j4"],
+    tags = [
+        "haskell",
+        "no-cross",
+    ],
+    visibility = ["//hs-tox/tools:__pkg__"],
+    deps = [
+        "//hs-toxcore-c",
+        "//hs-toxsync",
+        "//third_party/haskell:base",
+        "//third_party/haskell:base16-bytestring",
+        "//third_party/haskell:bytestring",
+        "//third_party/haskell:containers",
+        "//third_party/haskell:filepath",
+        "//third_party/haskell:random",
+        "//third_party/haskell:text",
+        "//third_party/haskell:time",
+    ],
+)
